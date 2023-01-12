@@ -1,0 +1,117 @@
+apiVersion: v1
+items:
+- apiVersion: image.openshift.io/v1
+  kind: ImageStream
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: null
+    labels:
+      app: rating-api
+      app.kubernetes.io/component: rating-api
+      app.kubernetes.io/instance: rating-api
+    name: rating-api
+  spec:
+    lookupPolicy:
+      local: false
+  status:
+    dockerImageRepository: ""
+- apiVersion: build.openshift.io/v1
+  kind: BuildConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: null
+    labels:
+      app: rating-api
+      app.kubernetes.io/component: rating-api
+      app.kubernetes.io/instance: rating-api
+    name: rating-api
+  spec:
+    nodeSelector: null
+    output:
+      to:
+        kind: ImageStreamTag
+        name: rating-api:latest
+    postCommit: {}
+    resources: {}
+    source:
+      git:
+        uri: https://github.com/thotheod/mslearn-aks-workshop-ratings-api
+      type: Git
+    strategy:
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: nodejs:16-ubi8
+          namespace: openshift
+      type: Source
+    triggers:
+    - github:
+        secret: 98PpWu464fsdspr_z57v
+      type: GitHub
+    - generic:
+        secret: yvURbK7VEnY7-y71g-iX
+      type: Generic
+    - type: ConfigChange
+    - imageChange: {}
+      type: ImageChange
+  status:
+    lastVersion: 0
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      image.openshift.io/triggers: '[{"from":{"kind":"ImageStreamTag","name":"rating-api:latest"},"fieldPath":"spec.template.spec.containers[?(@.name==\"rating-api\")].image"}]'
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: null
+    labels:
+      app: rating-api
+      app.kubernetes.io/component: rating-api
+      app.kubernetes.io/instance: rating-api
+    name: rating-api
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        deployment: rating-api
+    strategy: {}
+    template:
+      metadata:
+        annotations:
+          openshift.io/generated-by: OpenShiftNewApp
+        creationTimestamp: null
+        labels:
+          deployment: rating-api
+      spec:
+        containers:
+        - image: ' '
+          name: rating-api
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          resources: {}
+  status: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: null
+    labels:
+      app: rating-api
+      app.kubernetes.io/component: rating-api
+      app.kubernetes.io/instance: rating-api
+    name: rating-api
+  spec:
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      deployment: rating-api
+  status:
+    loadBalancer: {}
+kind: List
+metadata: {}
