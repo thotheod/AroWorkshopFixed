@@ -1,0 +1,101 @@
+# follow: https://learn.microsoft.com/en-us/azure/openshift/tutorial-create-cluster
+
+
+LOCATION=northeurope
+RESOURCEGROUP=rg-aroTest            # the name of the resource group where you want to create your cluster
+CLUSTER=arocluster                     # the name of your cluster
+VNET=vnetAro
+
+az vm list-usage -l $LOCATION \
+--query "[?contains(name.value, 'standardDSv3Family')]" \
+-o table
+
+
+# limite is 350 current is 14
+# after ARO CLuster 14 -> 50 so we need 36 vCPUs
+# It created:
+# - 3 masters> Standard D8s v3 (8 vcpus, 32 GiB memory) (24vcpus)
+# - 3 workers> Standard D4s v3 (4 vcpus, 16 GiB memory) (12vcpus)
+###############################################
+az account set --subscription Thotheod-CAE-Sponsored
+
+az provider register -n Microsoft.RedHatOpenShift --wait
+az provider register -n Microsoft.Compute --wait
+az provider register -n Microsoft.Storage --wait
+az provider register -n Microsoft.Authorization --wait
+
+# not sure if need: Try not fiest time
+az feature register --namespace Microsoft.RedHatOpenShift --name preview
+
+################################
+# create RG And Vnet
+az group create \
+  --name $RESOURCEGROUP \
+  --location $LOCATION
+
+
+
+az network vnet create \
+   --resource-group $RESOURCEGROUP \
+   --name $VNET \
+   --address-prefixes 10.0.0.0/22
+
+
+az network vnet subnet create \
+  --resource-group $RESOURCEGROUP \
+  --vnet-name $VNET \
+  --name master-subnet \
+  --address-prefixes 10.0.0.0/23
+
+az network vnet subnet create \
+  --resource-group $RESOURCEGROUP \
+  --vnet-name $VNET \
+  --name worker-subnet \
+  --address-prefixes 10.0.2.0/23  
+
+
+# https://learn.microsoft.com/en-us/azure/openshift/tutorial-create-cluster#get-a-red-hat-pull-secret-optional
+
+
+  ############
+  # Create clluster
+  az aro create \
+  --resource-group $RESOURCEGROUP \
+  --name $CLUSTER \
+  --vnet $VNET \
+  --master-subnet master-subnet \
+  --worker-subnet worker-subnet \
+  --pull-secret @pull-secret.txt
+# this operation took me around 35 minutes
+
+
+# Get credentials
+az aro list-credentials \
+  --name $CLUSTER \
+  --resource-group $RESOURCEGROUP
+#   {
+#   "kubeadminPassword": "AwSWo-eBvaY-Qi6Jd-TEPhd",
+#   "kubeadminUsername": "kubeadmin"
+# }
+
+az aro show \
+    --name $CLUSTER \
+    --resource-group $RESOURCEGROUP \
+    --query "consoleProfile.url" -o tsv
+# https://console-openshift-console.apps.tmgdx0ht.northeurope.aroapp.io/  
+
+############
+# Download oc CLI
+# run 
+cd ~
+wget https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux.tar.gz
+
+mkdir openshift
+tar -zxvf openshift-client-linux.tar.gz -C openshift
+echo 'export PATH=$PATH:~/openshift' >> ~/.bashrc && source ~/.bashrc
+```
+
+# Console Connect
+# https://learn.microsoft.com/en-us/azure/openshift/tutorial-connect-cluster#connect-using-the-openshift-cli
+apiServer=$(az aro show -g $RESOURCEGROUP -n $CLUSTER --query apiserverProfile.url -o tsv)
+oc login $apiServer -u kubeadmin -p AwSWo-eBvaY-Qi6Jd-TEPhd
